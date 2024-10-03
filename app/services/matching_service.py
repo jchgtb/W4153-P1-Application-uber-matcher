@@ -1,6 +1,7 @@
 import requests
 from sqlalchemy.orm import Session
 from app.repository.match_repository import MatchRepository
+from datetime import datetime
 
 class MatchingService:
     def __init__(self, db: Session):
@@ -25,7 +26,7 @@ class MatchingService:
 
     def get_flight_by_user_id(self, user1_id: int):
 
-        url = f"http://flight-tracker-microservice.local/flights/{user1_id}"
+        url = f"http://127.0.0.1:8000/flights/{user1_id}"
 
         try:
             response = requests.get(url)
@@ -36,7 +37,7 @@ class MatchingService:
             return None
 
     def get_nearby_flights(self, flight_id: int):
-        url = "http://flight-tracker-microservice.local/flights/nearby"
+        url = "http://127.0.0.1:8000/flights/nearby"
         try:
             response = requests.post(url, json={"flight_id": flight_id})
             response.raise_for_status()
@@ -46,7 +47,16 @@ class MatchingService:
             return None
 
     def find_nearest_flight(self, current_flight, nearby_flights):
-        return min(nearby_flights, key=lambda f: abs(
-            (f["flight_date"] - current_flight["flight_date"]).days * 24 * 60 +
-            (f["flight_time"] - current_flight["flight_time"]).seconds // 60
+        current_flight_datetime = datetime.combine(
+            datetime.strptime(current_flight["flight_date"], "%Y-%m-%d").date(),
+            datetime.strptime(current_flight["flight_time"], "%H:%M:%S").time()
+        )
+
+        nearest_flight = min(nearby_flights, key=lambda f: abs(
+            (datetime.combine(
+                datetime.strptime(f["flight_date"], "%Y-%m-%d").date(),
+                datetime.strptime(f["flight_time"], "%H:%M:%S").time()
+            ) - current_flight_datetime).total_seconds()
         ))
+
+        return nearest_flight
